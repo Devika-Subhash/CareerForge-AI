@@ -1,7 +1,46 @@
+import { useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 function Signup() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSignup = (e) => {
+    e.preventDefault();
+
+    if (!name || !email || !password || !confirmPassword) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setError("");
+
+    console.log("Signup details:", {
+      name,
+      email,
+      password,
+    });
+  };
+
   return (
     <Container>
       <Row className="justify-content-center align-items-center py-5">
@@ -15,13 +54,21 @@ function Signup() {
               </p>
             </div>
 
-            <Form>
+            <Form onSubmit={handleSignup}>
+              {error && (
+                <div className="alert alert-danger">
+                  {error}
+                </div>
+              )}
+
               <Form.Group className="mb-3">
                 <Form.Label>Full Name</Form.Label>
 
                 <Form.Control
                   type="text"
                   placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </Form.Group>
 
@@ -31,6 +78,8 @@ function Signup() {
                 <Form.Control
                   type="email"
                   placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </Form.Group>
 
@@ -40,6 +89,8 @@ function Signup() {
                 <Form.Control
                   type="password"
                   placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </Form.Group>
 
@@ -49,10 +100,12 @@ function Signup() {
                 <Form.Control
                   type="password"
                   placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </Form.Group>
 
-              <Button variant="primary" className="w-100 mb-3">
+              <Button type="submit" variant="primary" className="w-100 mb-3">
                 Create Account
               </Button>
 

@@ -1,7 +1,33 @@
+import { useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setError("");
+
+    console.log("Login details:", {
+      email,
+      password,
+    });
+  };
+
   return (
     <Container>
       <Row className="justify-content-center align-items-center py-5">
@@ -15,13 +41,21 @@ function Login() {
               </p>
             </div>
 
-            <Form>
+            <Form onSubmit={handleLogin}>
+              {error && (
+                <div className="alert alert-danger">
+                  {error}
+                </div>
+              )}
+
               <Form.Group className="mb-3">
                 <Form.Label>Email Address</Form.Label>
 
                 <Form.Control
                   type="email"
                   placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </Form.Group>
 
@@ -37,6 +71,8 @@ function Login() {
                 <Form.Control
                   type="password"
                   placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </Form.Group>
 
@@ -46,7 +82,7 @@ function Login() {
                 className="mb-4"
               />
 
-              <Button variant="primary" className="w-100 mb-3">
+              <Button type="submit" variant="primary" className="w-100 mb-3">
                 Login
               </Button>
 
