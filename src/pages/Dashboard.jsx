@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Container, Row, Col, Card, ProgressBar } from "react-bootstrap";
+import { useState, useEffect } from "react";
+import { Container, Row, Col, Card } from "react-bootstrap";
 
 function Dashboard() {
   const [user] = useState(() => {
@@ -12,26 +12,64 @@ function Dashboard() {
     return null;
   });
 
-  const stats = [
+  const [stats, setStats] = useState({
+    total: 0,
+    applied: 0,
+    interview: 0,
+    offer: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        "http://localhost:5000/api/jobs/stats",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStats(data);
+      }
+    } catch (error) {
+      console.error("Unable to fetch dashboard statistics.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const dashboardStats = [
     {
-      title: "Career Score",
-      value: "85%",
-      icon: "bi-graph-up-arrow",
+      title: "Total Applications",
+      value: stats.total,
+      icon: "bi-briefcase",
     },
     {
-      title: "Resumes",
-      value: "2",
-      icon: "bi-file-earmark-text",
+      title: "Applied",
+      value: stats.applied,
+      icon: "bi-send",
     },
     {
-      title: "Interview Prep",
-      value: "12",
+      title: "Interviews",
+      value: stats.interview,
       icon: "bi-chat-square-text",
     },
     {
-      title: "Applications",
-      value: "8",
-      icon: "bi-briefcase",
+      title: "Offers",
+      value: stats.offer,
+      icon: "bi-trophy",
     },
   ];
 
@@ -43,20 +81,24 @@ function Dashboard() {
         </h2>
 
         <p className="text-muted mb-0">
-          Here is an overview of your career progress.
+          Here is an overview of your job application progress.
         </p>
       </div>
 
-      <Row className="g-4 mb-5">
-        {stats.map((stat) => (
+      <Row className="g-4">
+        {dashboardStats.map((stat) => (
           <Col md={6} lg={3} key={stat.title}>
             <Card className="border-0 shadow-sm h-100">
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <p className="text-muted mb-2">{stat.title}</p>
+                    <p className="text-muted mb-2">
+                      {stat.title}
+                    </p>
 
-                    <h3 className="fw-bold mb-0">{stat.value}</h3>
+                    <h3 className="fw-bold mb-0">
+                      {loading ? "..." : stat.value}
+                    </h3>
                   </div>
 
                   <div className="fs-3 text-primary">
@@ -69,64 +111,18 @@ function Dashboard() {
         ))}
       </Row>
 
-      <Row className="g-4">
-        <Col lg={7}>
-          <Card className="border-0 shadow-sm h-100">
+      <Row className="mt-5">
+        <Col>
+          <Card className="border-0 shadow-sm">
             <Card.Body className="p-4">
-              <h4 className="fw-bold mb-4">Career Progress</h4>
+              <h4 className="fw-bold mb-3">
+                Application Overview
+              </h4>
 
-              <div className="mb-4">
-                <div className="d-flex justify-content-between mb-2">
-                  <span>Resume Strength</span>
-                  <span>80%</span>
-                </div>
-                <ProgressBar now={80} />
-              </div>
-
-              <div className="mb-4">
-                <div className="d-flex justify-content-between mb-2">
-                  <span>Interview Preparation</span>
-                  <span>65%</span>
-                </div>
-                <ProgressBar now={65} />
-              </div>
-
-              <div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span>Job Applications</span>
-                  <span>50%</span>
-                </div>
-                <ProgressBar now={50} />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col lg={5}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body className="p-4">
-              <h4 className="fw-bold mb-4">Recent Activity</h4>
-
-              <div className="border-bottom pb-3 mb-3">
-                <strong>Resume analyzed</strong>
-                <p className="text-muted small mb-0">
-                  Your resume score is 80%
-                </p>
-              </div>
-
-              <div className="border-bottom pb-3 mb-3">
-                <strong>Interview session completed</strong>
-                <p className="text-muted small mb-0">
-                  You answered 10 questions
-                </p>
-              </div>
-
-              <div>
-                <strong>New job application added</strong>
-                <p className="text-muted small mb-0">
-                  Frontend Developer
-                </p>
-              </div>
+              <p className="text-muted mb-0">
+                Track your applications, interviews, and offers from your Job
+                Tracker.
+              </p>
             </Card.Body>
           </Card>
         </Col>

@@ -17,6 +17,28 @@ const getJobs = async (req, res) => {
   }
 };
 
+// Get job statistics for the logged-in user
+const getJobStats = async (req, res) => {
+  try {
+    const jobs = await Job.find({
+      user: req.userId,
+    });
+
+    const stats = {
+      total: jobs.length,
+      applied: jobs.filter((job) => job.status === "Applied").length,
+      interview: jobs.filter((job) => job.status === "Interview").length,
+      offer: jobs.filter((job) => job.status === "Offer").length,
+    };
+
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({
+      message: "Unable to fetch job statistics.",
+    });
+  }
+};
+
 // Add a new job
 const createJob = async (req, res) => {
   try {
@@ -104,6 +126,7 @@ const deleteJob = async (req, res) => {
 
 module.exports = {
   getJobs,
+  getJobStats,
   createJob,
   updateJob,
   deleteJob,
