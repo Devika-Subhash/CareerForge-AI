@@ -15,22 +15,43 @@ function JobTracker() {
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("Applied");
   const [error, setError] = useState("");
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [jobs, setJobs] = useState(() => {
-    const savedJobs = localStorage.getItem("jobs");
+  const getToken = () => {
+    return localStorage.getItem("token");
+  };
 
-    if (savedJobs) {
-      return JSON.parse(savedJobs);
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+
+      const response = await fetch("http://localhost:5000/api/jobs", {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Unable to fetch jobs.");
+        return;
+      }
+
+      setJobs(data);
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
     }
-
-    return [];
-  });
+  };
 
   useEffect(() => {
-    localStorage.setItem("jobs", JSON.stringify(jobs));
-  }, [jobs]);
+    fetchJobs();
+  }, []);
 
-  const addJob = (e) => {
+  const addJob = async (e) => {
     e.preventDefault();
 
     if (!company.trim() || !role.trim()) {
@@ -38,40 +59,107 @@ function JobTracker() {
       return;
     }
 
-    const newJob = {
-      id: Date.now(),
-      company: company,
-      role: role,
-      status: status,
-    };
+    try {
+      setError("");
 
-    setJobs([...jobs, newJob]);
+      const response = await fetch("http://localhost:5000/api/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          company,
+          position: role,
+          status,
+        }),
+      });
 
-    setCompany("");
-    setRole("");
-    setStatus("Applied");
-    setError("");
-  };
+      const data = await response.json();
 
-  const updateStatus = (id, newStatus) => {
-    const updatedJobs = jobs.map((job) => {
-      if (job.id === id) {
-        return {
-          ...job,
-          status: newStatus,
-        };
+      if (!response.ok) {
+        setError(data.message || "Unable to add job.");
+        return;
       }
 
-      return job;
-    });
+      setJobs([data, ...jobs]);
 
-    setJobs(updatedJobs);
+      setCompany("");
+      setRole("");
+      setStatus("Applied");
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    }
   };
 
-  const deleteJob = (id) => {
-    const updatedJobs = jobs.filter((job) => job.id !== id);
+  const updateStatus = async (id, newStatus) => {
+    try {
+      setError("");
 
-    setJobs(updatedJobs);
+      const job = jobs.find((job) => job._id === id);
+
+      const response = await fetch(
+        `http://localhost:5000/api/jobs/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({
+            company: job.company,
+            position: job.position,
+            status: newStatus,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Unable to update job.");
+        return;
+      }
+
+      setJobs(
+        jobs.map((job) => {
+          if (job._id === id) {
+            return data;
+          }
+
+          return job;
+        })
+      );
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    }
+  };
+
+  const deleteJob = async (id) => {
+    try {
+      setError("");
+
+      const response = await fetch(
+        `http://localhost:5000/api/jobs/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Unable to delete job.");
+        return;
+      }
+
+      setJobs(jobs.filter((job) => job._id !== id));
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    }
   };
 
   const getStatusColor = (jobStatus) => {
@@ -171,7 +259,11 @@ function JobTracker() {
                 Your Applications
               </h4>
 
-              {jobs.length === 0 ? (
+              {loading ? (
+                <p className="text-muted text-center mb-0">
+                  Loading applications...
+                </p>
+              ) : jobs.length === 0 ? (
                 <p className="text-muted text-center mb-0">
                   No job applications added yet.
                 </p>
@@ -189,10 +281,10 @@ function JobTracker() {
 
                   <tbody>
                     {jobs.map((job) => (
-                      <tr key={job.id}>
+                      <tr key={job._id}>
                         <td>{job.company}</td>
 
-                        <td>{job.role}</td>
+                        <td>{job.position}</td>
 
                         <td>
                           <Badge bg={getStatusColor(job.status)}>
@@ -205,7 +297,10 @@ function JobTracker() {
                             size="sm"
                             value={job.status}
                             onChange={(e) =>
-                              updateStatus(job.id, e.target.value)
+                              updateStatus(
+                                job._id,
+                                e.target.value
+                              )
                             }
                           >
                             <option>Applied</option>
@@ -219,7 +314,7 @@ function JobTracker() {
                           <Button
                             variant="outline-danger"
                             size="sm"
-                            onClick={() => deleteJob(job.id)}
+                            onClick={() => deleteJob(job._id)}
                           >
                             <i className="bi bi-trash"></i>
                           </Button>
