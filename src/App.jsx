@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
+
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -14,19 +17,73 @@ import JobTracker from "./pages/JobTracker";
 function App() {
   return (
     <BrowserRouter>
-      <Navbar />
+      <div className="d-flex flex-column min-vh-100">
+        <Navbar />
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
-        <Route path="/interview-prep" element={<InterviewPrep />} />
-        <Route path="/job-tracker" element={<JobTracker />} />
-      </Routes>
+        <main className="flex-grow-1">
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Home />} />
 
-      <Footer />
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
+            />
+
+            <Route
+              path="/signup"
+              element={
+                <PublicRoute>
+                  <Signup />
+                </PublicRoute>
+              }
+            />
+
+            {/* Protected routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/resume-analyzer"
+              element={
+                <ProtectedRoute>
+                  <ResumeAnalyzer />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/interview-prep"
+              element={
+                <ProtectedRoute>
+                  <InterviewPrep />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/job-tracker"
+              element={
+                <ProtectedRoute>
+                  <JobTracker />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </main>
+
+        <Footer />
+      </div>
     </BrowserRouter>
   );
 }

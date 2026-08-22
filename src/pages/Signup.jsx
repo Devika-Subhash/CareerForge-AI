@@ -1,15 +1,20 @@
 import { useState } from "react";
-import { Container, Row, Col, Form, Button } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Container, Row, Col, Form, Button, Alert } from "react-bootstrap";
+import { Link, useNavigate } from "react-router-dom";
 
 function Signup() {
+  const navigate = useNavigate();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const handleSignup = (e) => {
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async (e) => {
     e.preventDefault();
 
     if (!name || !email || !password || !confirmPassword) {
@@ -32,13 +37,43 @@ function Signup() {
       return;
     }
 
-    setError("");
+    try {
+      setLoading(true);
+      setError("");
+      setSuccess("");
 
-    console.log("Signup details:", {
-      name,
-      email,
-      password,
-    });
+      const response = await fetch(
+        "http://localhost:5000/api/auth/signup",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Something went wrong.");
+        return;
+      }
+
+      setSuccess("Account created successfully! Redirecting to login...");
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,11 +90,9 @@ function Signup() {
             </div>
 
             <Form onSubmit={handleSignup}>
-              {error && (
-                <div className="alert alert-danger">
-                  {error}
-                </div>
-              )}
+              {error && <Alert variant="danger">{error}</Alert>}
+
+              {success && <Alert variant="success">{success}</Alert>}
 
               <Form.Group className="mb-3">
                 <Form.Label>Full Name</Form.Label>
@@ -105,8 +138,13 @@ function Signup() {
                 />
               </Form.Group>
 
-              <Button type="submit" variant="primary" className="w-100 mb-3">
-                Create Account
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-100 mb-3"
+                disabled={loading}
+              >
+                {loading ? "Creating Account..." : "Create Account"}
               </Button>
 
               <p className="text-center text-muted mb-0">

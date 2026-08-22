@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { Container, Row, Col, Form, Button } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Container, Row, Col, Form, Button, Alert } from "react-bootstrap";
+import { Link, useNavigate } from "react-router-dom";
 
 function Login() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -15,17 +19,40 @@ function Login() {
       return;
     }
 
-    if (!email.includes("@")) {
-      setError("Please enter a valid email address.");
-      return;
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(
+        "http://localhost:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Login failed.");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      navigate("/dashboard");
+    } catch (error) {
+      setError("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
     }
-
-    setError("");
-
-    console.log("Login details:", {
-      email,
-      password,
-    });
   };
 
   return (
@@ -42,11 +69,7 @@ function Login() {
             </div>
 
             <Form onSubmit={handleLogin}>
-              {error && (
-                <div className="alert alert-danger">
-                  {error}
-                </div>
-              )}
+              {error && <Alert variant="danger">{error}</Alert>}
 
               <Form.Group className="mb-3">
                 <Form.Label>Email Address</Form.Label>
@@ -59,14 +82,8 @@ function Login() {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3">
-                <div className="d-flex justify-content-between">
-                  <Form.Label>Password</Form.Label>
-
-                  <a href="#" className="text-decoration-none">
-                    Forgot Password?
-                  </a>
-                </div>
+              <Form.Group className="mb-4">
+                <Form.Label>Password</Form.Label>
 
                 <Form.Control
                   type="password"
@@ -76,14 +93,13 @@ function Login() {
                 />
               </Form.Group>
 
-              <Form.Check
-                type="checkbox"
-                label="Remember me"
-                className="mb-4"
-              />
-
-              <Button type="submit" variant="primary" className="w-100 mb-3">
-                Login
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-100 mb-3"
+                disabled={loading}
+              >
+                {loading ? "Logging in..." : "Login"}
               </Button>
 
               <p className="text-center text-muted mb-0">

@@ -1,6 +1,17 @@
+import { useState } from "react";
 import { Container, Row, Col, Card, ProgressBar } from "react-bootstrap";
 
 function Dashboard() {
+  const [user] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+
+    if (savedUser) {
+      return JSON.parse(savedUser);
+    }
+
+    return null;
+  });
+
   const stats = [
     {
       title: "Career Score",
@@ -27,7 +38,10 @@ function Dashboard() {
   return (
     <Container className="py-5">
       <div className="mb-5">
-        <h2 className="fw-bold">Welcome back!</h2>
+        <h2 className="fw-bold">
+          Welcome back{user ? `, ${user.name}` : ""}!
+        </h2>
+
         <p className="text-muted mb-0">
           Here is an overview of your career progress.
         </p>
@@ -40,13 +54,9 @@ function Dashboard() {
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <p className="text-muted mb-2">
-                      {stat.title}
-                    </p>
+                    <p className="text-muted mb-2">{stat.title}</p>
 
-                    <h3 className="fw-bold mb-0">
-                      {stat.value}
-                    </h3>
+                    <h3 className="fw-bold mb-0">{stat.value}</h3>
                   </div>
 
                   <div className="fs-3 text-primary">
@@ -70,7 +80,6 @@ function Dashboard() {
                   <span>Resume Strength</span>
                   <span>80%</span>
                 </div>
-
                 <ProgressBar now={80} />
               </div>
 
@@ -79,7 +88,6 @@ function Dashboard() {
                   <span>Interview Preparation</span>
                   <span>65%</span>
                 </div>
-
                 <ProgressBar now={65} />
               </div>
 
@@ -88,7 +96,6 @@ function Dashboard() {
                   <span>Job Applications</span>
                   <span>50%</span>
                 </div>
-
                 <ProgressBar now={50} />
               </div>
             </Card.Body>
