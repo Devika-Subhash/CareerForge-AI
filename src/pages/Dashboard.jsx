@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Container, Row, Col, Card } from "react-bootstrap";
+import { Container, Row, Col, Card, Badge } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 function Dashboard() {
   const [user] = useState(() => {
@@ -19,36 +20,62 @@ function Dashboard() {
     offer: 0,
   });
 
+  const [recentJobs, setRecentJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem("token");
 
-      const response = await fetch(
-        "http://localhost:5000/api/jobs/stats",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
 
-      const data = await response.json();
+      const [statsResponse, jobsResponse] = await Promise.all([
+        fetch("http://localhost:5000/api/jobs/stats", {
+          headers,
+        }),
+        fetch("http://localhost:5000/api/jobs", {
+          headers,
+        }),
+      ]);
 
-      if (response.ok) {
-        setStats(data);
+      const statsData = await statsResponse.json();
+      const jobsData = await jobsResponse.json();
+
+      if (statsResponse.ok) {
+        setStats(statsData);
+      }
+
+      if (jobsResponse.ok) {
+        setRecentJobs(jobsData.slice(0, 5));
       }
     } catch (error) {
-      console.error("Unable to fetch dashboard statistics.");
+      console.error("Unable to fetch dashboard data.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStats();
+    fetchDashboardData();
   }, []);
+
+  const getStatusColor = (status) => {
+    if (status === "Applied") {
+      return "primary";
+    }
+
+    if (status === "Interview") {
+      return "warning";
+    }
+
+    if (status === "Offer") {
+      return "success";
+    }
+
+    return "secondary";
+  };
 
   const dashboardStats = [
     {
@@ -115,14 +142,51 @@ function Dashboard() {
         <Col>
           <Card className="border-0 shadow-sm">
             <Card.Body className="p-4">
-              <h4 className="fw-bold mb-3">
-                Application Overview
-              </h4>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="fw-bold mb-0">
+                  Recent Applications
+                </h4>
 
-              <p className="text-muted mb-0">
-                Track your applications, interviews, and offers from your Job
-                Tracker.
-              </p>
+                <Link
+                  to="/job-tracker"
+                  className="btn btn-outline-primary btn-sm"
+                >
+                  View All
+                </Link>
+              </div>
+
+              {loading ? (
+                <p className="text-muted text-center mb-0">
+                  Loading applications...
+                </p>
+              ) : recentJobs.length === 0 ? (
+                <p className="text-muted text-center mb-0">
+                  No job applications added yet.
+                </p>
+              ) : (
+                <div>
+                  {recentJobs.map((job) => (
+                    <div
+                      key={job._id}
+                      className="d-flex justify-content-between align-items-center border-bottom py-3"
+                    >
+                      <div>
+                        <h6 className="fw-semibold mb-1">
+                          {job.position}
+                        </h6>
+
+                        <p className="text-muted mb-0">
+                          {job.company}
+                        </p>
+                      </div>
+
+                      <Badge bg={getStatusColor(job.status)}>
+                        {job.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
