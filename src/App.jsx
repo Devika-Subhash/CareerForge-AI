@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 import InterviewPrep from "./pages/InterviewPrep";
+import InterviewHistory from "./pages/InterviewHistory";
 import JobTracker from "./pages/JobTracker";
 
 function App() {
@@ -67,6 +68,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <InterviewPrep />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/interview-history"
+              element={
+                <ProtectedRoute>
+                  <InterviewHistory />
                 </ProtectedRoute>
               }
             />

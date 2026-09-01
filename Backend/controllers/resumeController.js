@@ -1,3 +1,9 @@
+const OpenAI = require("openai");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 const analyzeResume = async (req, res) => {
   try {
     const { resume, jobDescription } = req.body;
@@ -8,118 +14,65 @@ const analyzeResume = async (req, res) => {
       });
     }
 
-    const resumeText = resume.toLowerCase();
-    const jobText = jobDescription.toLowerCase();
+    const prompt = `
+You are an expert resume analyzer.
 
-    // Common technical and professional skills
-    const skillList = [
-      "javascript",
-      "typescript",
-      "react",
-      "react.js",
-      "node.js",
-      "node",
-      "express",
-      "express.js",
-      "mongodb",
-      "mysql",
-      "postgresql",
-      "sql",
-      "html",
-      "css",
-      "bootstrap",
-      "tailwind",
-      "git",
-      "github",
-      "rest api",
-      "rest apis",
-      "api",
-      "python",
-      "java",
-      "c",
-      "c++",
-      "c#",
-      "php",
-      "aws",
-      "docker",
-      "kubernetes",
-      "figma",
-      "firebase",
-      "redux",
-      "next.js",
-      "angular",
-      "vue",
-      "machine learning",
-      "artificial intelligence",
-      "data analysis",
-      "communication",
-      "leadership",
-      "problem solving",
-      "teamwork",
-    ];
+Compare the candidate's resume with the job description.
 
-    // Find skills that actually appear in the job description
-    const requiredSkills = skillList.filter((skill) =>
-      jobText.includes(skill)
-    );
+Return ONLY valid JSON in this exact format:
 
-    // Remove duplicates
-    const uniqueRequiredSkills = [...new Set(requiredSkills)];
+{
+  "score": 0,
+  "matchingSkills": [],
+  "missingSkills": [],
+  "suggestions": []
+}
 
-    // Find skills from the job description that also appear in the resume
-    const matchingSkills = uniqueRequiredSkills.filter((skill) =>
-      resumeText.includes(skill)
-    );
+Rules:
+- score must be a number between 0 and 100.
+- matchingSkills should contain relevant technical and professional skills found in both the resume and job description.
+- missingSkills should contain important skills from the job description that are missing from the resume.
+- Do not include ordinary words such as "and", "with", "for", "looking", "experience", "developer", or "candidate" as skills.
+- suggestions should contain 3 to 5 useful and specific resume improvements.
+- Do not use markdown.
+- Do not include text outside the JSON.
 
-    // Find required skills missing from the resume
-    const missingSkills = uniqueRequiredSkills.filter(
-      (skill) => !resumeText.includes(skill)
-    );
+RESUME:
+${resume}
 
-    // Calculate score
-    let score = 0;
+JOB DESCRIPTION:
+${jobDescription}
+`;
 
-    if (uniqueRequiredSkills.length > 0) {
-      score = Math.round(
-        (matchingSkills.length / uniqueRequiredSkills.length) * 100
-      );
-    } else {
-      score = 0;
-    }
-
-    const suggestions = [];
-
-    if (missingSkills.length > 0) {
-      suggestions.push(
-        `Consider adding relevant skills such as ${missingSkills
-          .slice(0, 5)
-          .join(", ")} if you have experience with them.`
-      );
-    }
-
-    suggestions.push(
-      "Use keywords from the job description naturally throughout your resume."
-    );
-
-    suggestions.push(
-      "Include measurable achievements to make your experience stronger."
-    );
-
-    suggestions.push(
-      "Highlight projects and experience that are directly related to the target role."
-    );
-
-    res.json({
-      score,
-      matchingSkills,
-      missingSkills,
-      suggestions,
+    const response = await openai.responses.create({
+      model: "gpt-5.6-luna",
+      input: prompt,
     });
+
+    const output = response.output_text;
+
+    console.log("AI response:", output);
+
+    let result;
+
+    try {
+      result = JSON.parse(output);
+    } catch (parseError) {
+      console.error("JSON parsing error:", parseError);
+
+      return res.status(500).json({
+        message: "AI returned an invalid response.",
+        rawResponse: output,
+      });
+    }
+
+    res.json(result);
   } catch (error) {
-    console.error("Resume analysis error:", error);
+    console.error("AI resume analysis error:", error);
 
     res.status(500).json({
-      message: "Unable to analyze resume.",
+      message: "Unable to analyze resume with AI.",
+      error: error.message,
     });
   }
 };

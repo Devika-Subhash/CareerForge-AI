@@ -1,24 +1,34 @@
 import { useState } from "react";
-import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  Button,
+  Card,
+  Badge,
+  ProgressBar,
+  Alert,
+} from "react-bootstrap";
 
 function InterviewPrep() {
   const [jobRole, setJobRole] = useState("");
+  const [questions, setQuestions] = useState([]);
+
   const [started, setStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+
   const [answer, setAnswer] = useState("");
   const [answers, setAnswers] = useState([]);
+
   const [showResults, setShowResults] = useState(false);
+
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
-  const questions = [
-    "What is React and why is it used?",
-    "What is the difference between props and state?",
-    "Explain the useEffect hook.",
-    "What is the difference between let, const, and var?",
-    "How does React handle component re-rendering?",
-  ];
-
-  const startInterview = (e) => {
+  const startInterview = async (e) => {
     e.preventDefault();
 
     if (!jobRole.trim()) {
@@ -26,15 +36,120 @@ function InterviewPrep() {
       return;
     }
 
-    setError("");
-    setStarted(true);
-    setCurrentQuestion(0);
-    setAnswer("");
-    setAnswers([]);
-    setShowResults(false);
+    try {
+      setLoading(true);
+      setError("");
+      setSaveMessage("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please log in again.");
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:5000/api/interview/questions?jobRole=${encodeURIComponent(
+          jobRole
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Unable to load interview questions.");
+        return;
+      }
+
+      setQuestions(data.questions);
+
+      setStarted(true);
+      setCurrentQuestion(0);
+      setAnswer("");
+      setAnswers([]);
+      setShowResults(false);
+    } catch (error) {
+      console.error(error);
+      setError("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const nextQuestion = () => {
+  const calculateScore = (answerList = answers) => {
+    if (answerList.length === 0 || questions.length === 0) {
+      return 0;
+    }
+
+    const answeredQuestions = answerList.filter(
+      (item) => item && item.trim().length > 20
+    ).length;
+
+    return Math.round(
+      (answeredQuestions / questions.length) * 100
+    );
+  };
+
+  const saveInterview = async (finalAnswers) => {
+    try {
+      setSaving(true);
+      setError("");
+      setSaveMessage("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setError("Please log in again before saving the interview.");
+        return;
+      }
+
+      const interviewQuestions = questions.map(
+        (question, index) => ({
+          question,
+          answer: finalAnswers[index] || "",
+        })
+      );
+
+      const finalScore = calculateScore(finalAnswers);
+
+      const response = await fetch(
+        "http://localhost:5000/api/interview",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            jobRole,
+            questions: interviewQuestions,
+            score: finalScore,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Unable to save interview.");
+        return;
+      }
+
+      setSaveMessage("Interview saved successfully.");
+    } catch (error) {
+      console.error(error);
+      setError("Unable to connect to the server.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const nextQuestion = async () => {
     if (!answer.trim()) {
       setError("Please enter your answer before continuing.");
       return;
@@ -52,39 +167,62 @@ function InterviewPrep() {
       setStarted(false);
       setShowResults(true);
       setAnswer("");
+
+      await saveInterview(updatedAnswers);
     }
   };
 
   const practiceAgain = () => {
     setJobRole("");
+    setQuestions([]);
     setStarted(false);
     setCurrentQuestion(0);
     setAnswer("");
     setAnswers([]);
     setShowResults(false);
     setError("");
+    setSaveMessage("");
   };
+
+  const score = calculateScore();
 
   return (
     <Container className="py-5">
+      {/* Heading */}
       <div className="text-center mb-5">
         <h2 className="fw-bold">Interview Preparation</h2>
 
         <p className="text-muted">
-          Practice interview questions for your target role.
+          Practice interview questions tailored to your target role.
         </p>
       </div>
 
       <Row className="justify-content-center">
         <Col lg={8}>
+          {/* Start Interview */}
           {!started && !showResults && (
             <Card className="border-0 shadow-sm">
               <Card.Body className="p-4">
+                <div className="text-center mb-4">
+                  <div className="fs-1 text-primary mb-2">
+                    <i className="bi bi-chat-square-text"></i>
+                  </div>
+
+                  <h4 className="fw-bold">
+                    Start Your Interview Practice
+                  </h4>
+
+                  <p className="text-muted mb-0">
+                    Enter your target job role and practice role-specific
+                    interview questions.
+                  </p>
+                </div>
+
                 <Form onSubmit={startInterview}>
                   {error && (
-                    <div className="alert alert-danger">
+                    <Alert variant="danger">
                       {error}
-                    </div>
+                    </Alert>
                   )}
 
                   <Form.Group className="mb-4">
@@ -94,35 +232,67 @@ function InterviewPrep() {
                       type="text"
                       placeholder="Example: React Developer"
                       value={jobRole}
-                      onChange={(e) => setJobRole(e.target.value)}
+                      onChange={(e) =>
+                        setJobRole(e.target.value)
+                      }
                     />
                   </Form.Group>
 
-                  <Button type="submit" variant="primary">
-                    Start Practice
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-100"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                        ></span>
+
+                        Loading Questions...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-play-fill me-2"></i>
+                        Start Practice
+                      </>
+                    )}
                   </Button>
                 </Form>
               </Card.Body>
             </Card>
           )}
 
-          {started && (
+          {/* Interview */}
+          {started && questions.length > 0 && (
             <Card className="border-0 shadow-sm">
               <Card.Body className="p-4">
-                <div className="d-flex justify-content-between mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
                   <span className="text-muted">
-                    Role: {jobRole}
+                    Role: <strong>{jobRole}</strong>
                   </span>
 
-                  <span className="text-muted">
-                    Question {currentQuestion + 1} of {questions.length}
-                  </span>
+                  <Badge bg="primary">
+                    Question {currentQuestion + 1} /{" "}
+                    {questions.length}
+                  </Badge>
                 </div>
 
+                <ProgressBar
+                  now={
+                    ((currentQuestion + 1) /
+                      questions.length) *
+                    100
+                  }
+                  className="mb-4"
+                />
+
                 {error && (
-                  <div className="alert alert-danger">
+                  <Alert variant="danger">
                     {error}
-                  </div>
+                  </Alert>
                 )}
 
                 <h4 className="fw-bold mb-4">
@@ -134,22 +304,35 @@ function InterviewPrep() {
 
                   <Form.Control
                     as="textarea"
-                    rows={6}
+                    rows={7}
                     placeholder="Type your answer here..."
                     value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
+                    onChange={(e) =>
+                      setAnswer(e.target.value)
+                    }
                   />
+
+                  <Form.Text className="text-muted">
+                    Try to give a clear and detailed answer.
+                  </Form.Text>
                 </Form.Group>
 
-                <Button onClick={nextQuestion} variant="primary">
+                <Button
+                  onClick={nextQuestion}
+                  variant="primary"
+                  disabled={saving}
+                >
                   {currentQuestion === questions.length - 1
                     ? "Finish Interview"
                     : "Next Question"}
+
+                  <i className="bi bi-arrow-right ms-2"></i>
                 </Button>
               </Card.Body>
             </Card>
           )}
 
+          {/* Results */}
           {showResults && (
             <Card className="border-0 shadow-sm">
               <Card.Body className="p-4">
@@ -158,28 +341,60 @@ function InterviewPrep() {
                     <i className="bi bi-check-circle"></i>
                   </div>
 
-                  <h3 className="fw-bold">Interview Completed!</h3>
+                  <h3 className="fw-bold">
+                    Interview Completed!
+                  </h3>
 
                   <p className="text-muted">
-                    You completed all {questions.length} questions for the{" "}
-                    {jobRole} role.
+                    You completed {questions.length} questions for the{" "}
+                    <strong>{jobRole}</strong> role.
                   </p>
                 </div>
 
-                <div className="text-center border rounded-4 p-4 mb-4">
-                  <p className="text-muted mb-1">
-                    Interview Score
-                  </p>
+                {/* Save Status */}
+                {saving && (
+                  <Alert variant="info">
+                    Saving your interview...
+                  </Alert>
+                )}
 
-                  <h1 className="text-primary fw-bold mb-0">
-                    75%
-                  </h1>
+                {saveMessage && (
+                  <Alert variant="success">
+                    <i className="bi bi-check-circle me-2"></i>
+                    {saveMessage}
+                  </Alert>
+                )}
 
-                  <small className="text-muted">
-                    AI evaluation will be added later.
-                  </small>
-                </div>
+                {error && (
+                  <Alert variant="danger">
+                    {error}
+                  </Alert>
+                )}
 
+                {/* Score */}
+                <Card className="border mb-4">
+                  <Card.Body className="p-4 text-center">
+                    <p className="text-muted mb-1">
+                      Practice Score
+                    </p>
+
+                    <h1 className="text-primary fw-bold">
+                      {score}%
+                    </h1>
+
+                    <ProgressBar
+                      now={score}
+                      label={`${score}%`}
+                    />
+
+                    <small className="text-muted d-block mt-3">
+                      Score is currently based on answer completion.
+                      AI evaluation can be added later.
+                    </small>
+                  </Card.Body>
+                </Card>
+
+                {/* Answers */}
                 <h4 className="fw-bold mb-3">
                   Your Answers
                 </h4>
@@ -189,18 +404,32 @@ function InterviewPrep() {
                     key={index}
                     className="border rounded-3 p-3 mb-3"
                   >
-                    <strong>
-                      Question {index + 1}: {question}
-                    </strong>
+                    <div className="fw-bold mb-2">
+                      Question {index + 1}
+                    </div>
 
-                    <p className="text-muted mb-0 mt-2">
-                      {answers[index]}
+                    <p className="mb-2">
+                      {question}
                     </p>
+
+                    <div className="bg-light rounded p-3">
+                      <small className="text-muted">
+                        Your Answer
+                      </small>
+
+                      <p className="mb-0 mt-1">
+                        {answers[index]}
+                      </p>
+                    </div>
                   </div>
                 ))}
 
                 <div className="text-center mt-4">
-                  <Button onClick={practiceAgain} variant="primary">
+                  <Button
+                    onClick={practiceAgain}
+                    variant="primary"
+                  >
+                    <i className="bi bi-arrow-repeat me-2"></i>
                     Practice Again
                   </Button>
                 </div>
